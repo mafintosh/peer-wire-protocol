@@ -1,0 +1,15 @@
+{
+  "name": "peer-wire-protocol",
+  "version": "0.3.0",
+  "description": "a stream implementing the peer wire protocol used with torrents",
+  "keywords": [
+    "torrent",
+    "protocol",
+    "stream",
+    "peer",
+    "wire"
+  ],
+  "dependencies": {
+    "bitfield": "~0.1.0"
+  }
+}
