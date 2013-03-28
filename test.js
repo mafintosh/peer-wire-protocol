@@ -8,7 +8,9 @@ var ran = 0;
 
 wire.on('handshake', function(infoHash, peerId) {
 	assert.equal(infoHash.length, 20);
+	assert.equal(infoHash.toString(), '01234567890123456789');
 	assert.equal(peerId.length, 20);
+	assert.equal(peerId.toString(), '12345678901234567890');
 	ran++;
 });
 
@@ -30,7 +32,7 @@ wire.on('request', function(i, offset, length, callback) {
 	callback(null, new Buffer('hello world'));
 });
 
-wire.handshake(new Buffer(20), new Buffer(20));
+wire.handshake(new Buffer('01234567890123456789'), new Buffer('12345678901234567890'));
 
 assert.ok(wire.amChoking);
 assert.ok(wire.peerChoking);
