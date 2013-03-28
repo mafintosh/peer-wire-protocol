@@ -21,8 +21,6 @@ net.createServer(function(socket) {
 	socket.pipe(wire).pipe(socket);
 
 	wire.on('handshake', function(infoHash, peerId) {
-		console.log('got handshake! infoHash is '+infoHash.toString('hex'));
-
 		// lets emit a handshake of our own as well
 		wire.handshake(new Buffer('my info hash'), new Buffer('my peer id'));
 	});
