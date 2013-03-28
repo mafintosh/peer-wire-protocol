@@ -2,12 +2,12 @@ var Duplex = require('stream').Duplex || require('readable-stream').Duplex;
 var EventEmitter = require('events').EventEmitter;
 var bitfield = require('bitfield');
 
-var MESSAGE_HANDSHAKE_PREFIX = new Buffer('\x13BitTorrent protocol');
-var MESSAGE_KEEP_ALIVE       = new Buffer('\x00\x00\x00\x00');
-var MESSAGE_CHOKE            = new Buffer('\x00\x00\x00\x01\x00');
-var MESSAGE_UNCHOKE          = new Buffer('\x00\x00\x00\x01\x01');
-var MESSAGE_INTERESTED       = new Buffer('\x00\x00\x00\x01\x02');
-var MESSAGE_UNINTERESTED     = new Buffer('\x00\x00\x00\x01\x03');
+var MESSAGE_PROTOCOL     = new Buffer('\x13BitTorrent protocol');
+var MESSAGE_KEEP_ALIVE   = new Buffer('\x00\x00\x00\x00');
+var MESSAGE_CHOKE        = new Buffer('\x00\x00\x00\x01\x00');
+var MESSAGE_UNCHOKE      = new Buffer('\x00\x00\x00\x01\x01');
+var MESSAGE_INTERESTED   = new Buffer('\x00\x00\x00\x01\x02');
+var MESSAGE_UNINTERESTED = new Buffer('\x00\x00\x00\x01\x03');
 
 var ID_CHOKE        = 0;
 var ID_UNCHOKE      = 1;
@@ -165,7 +165,7 @@ Wire.prototype.handshake = function(infoHash, peerId, extensions) {
 	var reserved = new Buffer([0,0,0,0,0,0,0,0]);
 	if (extensions && extensions.dht) reserved[7] |= 1;
 
-	this.push(Buffer.concat([MESSAGE_HANDSHAKE_PREFIX, reserved, infoHash, peerId], MESSAGE_HANDSHAKE_PREFIX.length+48));
+	this.push(Buffer.concat([MESSAGE_PROTOCOL, reserved, infoHash, peerId], MESSAGE_PROTOCOL.length+48));
 };
 
 Wire.prototype.choke = function() {
