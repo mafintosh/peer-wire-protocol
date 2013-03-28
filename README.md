@@ -127,6 +127,8 @@ wire.on('request', function(pieceIndex, offset, length, callback) {
 	// ... read piece ...
 	callback(null, piece); // respond back to the peer
 });
+
+wire.requests; // how many requests to we currently have pending
 ```
 
 You can set a request timeout if you want to
