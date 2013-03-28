@@ -149,7 +149,8 @@ var Wire = function() {
 	this._parse(1, function(pstrlen) {
 		pstrlen = pstrlen.readUInt8(0);
 		self._parse(pstrlen + 48, function(handshake) {
-			self._onhandshake(handshake.slice(pstrlen));
+			handshake = handshake.slice(pstrlen);
+			self._onhandshake(handshake.slice(8, 28), handshake.slice(28, 48), {dht: !!(handshake[7] & 1)});
 			self._parse(4, onmessagelength);
 		});
 	});
@@ -247,9 +248,9 @@ Wire.prototype.port = function(port) {
 
 // inbound
 
-Wire.prototype._onhandshake = function(buffer) {
-	this.peerExtensions.dht = buffer[7] & 1;
-	this.emit('handshake', buffer.slice(8, 28), buffer.slice(28, 48), this.peerExtensions);
+Wire.prototype._onhandshake = function(infoHash, peerId, extensions) {
+	this.peerExtensions = extensions;
+	this.emit('handshake', infoHash, peerId, extensions);
 };
 
 Wire.prototype._oninterested = function() {
