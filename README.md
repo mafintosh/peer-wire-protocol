@@ -133,7 +133,7 @@ wire.requests; // how many requests to we currently have pending
 You can set a request timeout if you want to
 
 ``` js
-request.setTimeout(5000); // head request should take a most 5s to finish
+wire.setTimeout(5000); // head request should take a most 5s to finish
 ```
 
 If the timeout is triggered the request callback is called with an error and a `timeout` event is emitted.
