@@ -99,14 +99,14 @@ var Wire = function() {
 
 	this._requests.on('timeout', function() {
 		self.emit('timeout');
-		self._requests.shift()(new Error('request has timed out'));
+		(self._requests.shift() || noop)(new Error('request has timed out'));
 	});
 
 	this.on('finish', function() {
 		self.push(null); // cannot be half open
 		clearInterval(self._keepAlive);
 		self._parse(Number.MAX_VALUE, noop);
-		while (self._requests.size()) self._requests.shift()(new Error('stream is closed'));
+		while (self._requests.size()) self._requests.shift()(new Error('wire is closed'));
 		while (self._peerRequests.size()) self._peerRequests.shift();
 	});
 
