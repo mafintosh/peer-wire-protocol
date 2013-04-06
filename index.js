@@ -101,11 +101,14 @@ var Wire = function() {
 		self.emit('timeout');
 		self._requests.shift()(new Error('request has timed out'));
 	});
-	this.on('finish', function() {
-		clearInterval(self._keepAlive);
-		self._parse(Number.MAX_VALUE, noop);
+
+	this.on('end', function() {
 		while (self._requests.size()) self._requests.shift()(new Error('stream has ended'));
 		while (self._peerRequests.size()) self._peerRequests.shift();
+	});
+	this.on('finish', function() {
+		self._ending();
+		self.push(null); // cannot be half open
 	});
 
 	this._buffer = [];
@@ -246,6 +249,11 @@ Wire.prototype.port = function(port) {
 	this.push(message);
 };
 
+Wire.prototype.destroy = function() {
+	this._ending();
+	this.end();
+};
+
 // inbound
 
 Wire.prototype._onhandshake = function(infoHash, peerId, extensions) {
@@ -336,6 +344,11 @@ Wire.prototype._message = function(id, numbers, data) {
 Wire.prototype._parse = function(size, parser) {
 	this._parserSize = size;
 	this._parser = parser;
+};
+
+Wire.prototype._ending = function() {
+	clearInterval(this._keepAlive);
+	this._parse(Number.MAX_VALUE, noop);
 };
 
 Wire.prototype._write = function(data, encoding, callback) {
