@@ -92,11 +92,11 @@ var Wire = function() {
 
 	this.uploaded = 0;
 	this.downloaded = 0;
-	this.finished = false;
 
 	this._requests = new CallbackStore();
 	this._peerRequests = new CallbackStore();
 	this._keepAlive = null;
+	this._finished = false;
 
 	this._requests.on('timeout', function() {
 		self.emit('timeout');
@@ -104,7 +104,7 @@ var Wire = function() {
 	});
 
 	this.on('finish', function() {
-		self.finished = true;
+		self._finished = true;
 		self.push(null); // cannot be half open
 		clearInterval(self._keepAlive);
 		self._parse(Number.MAX_VALUE, noop);
@@ -228,8 +228,8 @@ Wire.prototype.__defineGetter__('requests', function() {
 
 Wire.prototype.request = function(i, offset, length, callback) {
 	if (!callback) callback = noop;
+	if (this._finished) return callback(new Error('wire is closed'));
 	if (this.peerChoking) return callback(new Error('peer is choking'));
-	if (this.finished) return callback(new Error('wire is closed'));
 	this._requests.push(i, offset, length, callback);
 	this._message(ID_REQUEST, [i, offset, length]);
 };
