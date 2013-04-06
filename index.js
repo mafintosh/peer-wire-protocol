@@ -195,8 +195,8 @@ Wire.prototype.uninterested = function() {
 };
 
 Wire.prototype.bitfield = function(bitfield) {
-	if (buffer.buffer) buffer = buffer.buffer; // support bitfield objects
-	this._message(ID_BITFIELD, [], buffer);
+	if (bitfield.buffer) bitfield = bitfield.buffer; // support bitfield objects
+	this._message(ID_BITFIELD, [], bitfield);
 };
 
 Wire.prototype.have = function(i) {
