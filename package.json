@@ -1,6 +1,6 @@
 {
   "name": "peer-wire-protocol",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "a stream implementing the peer wire protocol used with torrents",
   "keywords": [
     "torrent",
