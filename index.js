@@ -110,7 +110,6 @@ var Wire = function() {
 		self._parse(Number.MAX_VALUE, noop);
 		while (self._requests.size()) self._requests.shift()(new Error('wire is closed'));
 		while (self._peerRequests.size()) self._peerRequests.shift();
-		self.emit('close');
 	});
 
 	this._buffer = [];
@@ -253,6 +252,7 @@ Wire.prototype.port = function(port) {
 };
 
 Wire.prototype.destroy = function() {
+	this.emit('close');
 	this.end();
 };
 
