@@ -60,7 +60,7 @@ CallbackStore.prototype.pull = function(i, offset, length) {
 };
 
 CallbackStore.prototype.forEach = function(fn) {
-	this._list.forEach(function(args) {
+	this._list.slice(0).forEach(function(args) {
 		fn.apply(null, args);
 	});
 };
