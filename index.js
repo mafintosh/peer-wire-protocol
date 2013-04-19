@@ -59,6 +59,12 @@ CallbackStore.prototype.pull = function(i, offset, length) {
 	}
 };
 
+CallbackStore.prototype.forEach = function(fn) {
+	this._list.forEach(function(args) {
+		fn.apply(null, args);
+	});
+};
+
 CallbackStore.prototype.clear = function() {
 	this._list = [];
 	this._reset();
@@ -235,6 +241,7 @@ Wire.prototype.request = function(i, offset, length, callback) {
 };
 
 Wire.prototype.cancel = function(i, offset, length) {
+	if (!arguments.length) return this._requests.forEach(this.cancel.bind(this));
 	(this._requests.pull(i, offset, length) || noop)(new Error('request was cancelled'));
 	this._message(ID_CANCEL, [i, offset, length]);
 };
