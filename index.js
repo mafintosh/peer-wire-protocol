@@ -176,32 +176,32 @@ Wire.prototype.handshake = function(infoHash, peerId, extensions) {
 	var reserved = new Buffer([0,0,0,0,0,0,0,0]);
 	if (extensions && extensions.dht) reserved[7] |= 1;
 
-	this.push(Buffer.concat([MESSAGE_PROTOCOL, reserved, infoHash, peerId], MESSAGE_PROTOCOL.length+48));
+	this._push(Buffer.concat([MESSAGE_PROTOCOL, reserved, infoHash, peerId], MESSAGE_PROTOCOL.length+48));
 };
 
 Wire.prototype.choke = function() {
 	if (this.amChoking) return;
 	this.amChoking = true;
 	while (this._peerRequests.size()) this._peerRequests.shift()(new Error('wire is choked'));
-	this.push(MESSAGE_CHOKE);
+	this._push(MESSAGE_CHOKE);
 };
 
 Wire.prototype.unchoke = function() {
 	if (!this.amChoking) return;
 	this.amChoking = false;
-	this.push(MESSAGE_UNCHOKE);
+	this._push(MESSAGE_UNCHOKE);
 };
 
 Wire.prototype.interested = function() {
 	if (this.amInterested) return;
 	this.amInterested = true;
-	this.push(MESSAGE_INTERESTED);
+	this._push(MESSAGE_INTERESTED);
 };
 
 Wire.prototype.uninterested = function() {
 	if (!this.amInterested) return;
 	this.amInterested = false;
-	this.push(MESSAGE_UNINTERESTED);
+	this._push(MESSAGE_UNINTERESTED);
 };
 
 Wire.prototype.bitfield = function(bitfield) {
@@ -255,7 +255,7 @@ Wire.prototype.piece = function(i, offset, block) {
 Wire.prototype.port = function(port) {
 	var message = new Buffer('\x00\x00\x00\x03\x09\x00\x00');
 	message.writeUInt16BE(port, 5);
-	this.push(message);
+	this._push(message);
 };
 
 Wire.prototype.destroy = function() {
@@ -346,8 +346,13 @@ Wire.prototype._message = function(id, numbers, data) {
 		buffer.writeUInt32BE(num, 5 + 4 * i);
 	});
 
-	this.push(buffer);
-	if (data) this.push(data);
+	this._push(buffer);
+	if (data) this._push(data);
+};
+
+Wire.prototype._push = function(data) {
+	if (this._finished) return;
+	this.push(data);
 };
 
 Wire.prototype._parse = function(size, parser) {
