@@ -22,65 +22,21 @@ var ID_PORT         = 9;
 
 var noop = function() {};
 
-var CallbackStore = function() {
-	EventEmitter.call(this);
-
-	this._list = [];
-	this._id = null;
-	this._ms = 0;
-	this._ontimeout = this.emit.bind(this, 'timeout');
-	this.on('timeout', this._reset);
-};
-
-CallbackStore.prototype.__proto__ = EventEmitter.prototype;
-
-CallbackStore.prototype.setTimeout = function(ms) {
-	this._ms = ms;
-	this._reset();
-};
-
-CallbackStore.prototype.size = function() {
-	return this._list.length;
-};
-
-CallbackStore.prototype.push = function(i, offset, length, callback) {
-	this._list.push(arguments);
-	if (this._list.length === 1) this._reset();
-};
-
-CallbackStore.prototype.pull = function(i, offset, length) {
-	for (var j = 0; j < this._list.length; j++) {
-		var req = this._list[j];
-		if (req[0] === i && req[1] === offset && req[2] === length) {
-			this._list.splice(j, 1);
-			this._reset();
-			return req.length > 3 && req[3];
-		}
+var pull = function(requests, piece, offset, length) {
+	for (var i = 0; i < requests.length; i++) {
+		var req = requests[i];
+		if (req.piece !== piece || req.offset !== offset || req.length !== length) continue;
+		requests.splice(i, 1);
+		return req;
 	}
+	return null;
 };
 
-CallbackStore.prototype.forEach = function(fn) {
-	this._list.slice(0).forEach(function(args) {
-		fn.apply(null, args);
-	});
-};
-
-CallbackStore.prototype.clear = function() {
-	this._list = [];
-	this._reset();
-}
-
-CallbackStore.prototype.shift = function() {
-	var first = this._list.shift();
-	this._reset();
-	return first && first.length > 3 && first[3];
-};
-
-CallbackStore.prototype._reset = function() {
-	if (this._id) clearTimeout(this._id);
-	this._id = null;
-	if (!this._ms || !this._list.length) return;
-	this._id = setTimeout(this._ontimeout, this._ms);
+var Request = function(piece, offset, length, callback) {
+	this.piece = piece;
+	this.offset = offset;
+	this.length = length;
+	this.callback = callback;
 };
 
 var Wire = function() {
@@ -94,35 +50,29 @@ var Wire = function() {
 	this.peerInterested = false;
 	this.peerPieces = [];
 	this.peerExtensions = {};
-	this.peerAddress = null; // for someone else to populate...
+	this.peerAddress = null; // external
+	this.peerSpeed = null;   // external
 
 	this.uploaded = 0;
 	this.downloaded = 0;
 
-	this._requests = new CallbackStore();
-	this._peerRequests = new CallbackStore();
-	this._keepAlive = null;
-	this._finished = false;
-
-	this._requests.on('timeout', function() {
-		self.emit('timeout');
-		(self._requests.shift() || noop)(new Error('request has timed out'));
-	});
+	this.requests = [];
+	this.peerRequests = [];
 
 	this.on('finish', function() {
 		self._finished = true;
 		self.push(null); // cannot be half open
 		clearInterval(self._keepAlive);
 		self._parse(Number.MAX_VALUE, noop);
-		while (self._requests.size()) self._requests.shift()(new Error('wire is closed'));
-		while (self._peerRequests.size()) self._peerRequests.shift();
+		while (self.requests.length) self.requests.shift().callback(new Error('wire is closed'));
+		while (self.peerRequests.length) self.peerRequests.shift();
 	});
 
-	this._buffer = [];
-	this._bufferSize = 0;
-	this._parser = null;
-	this._parserSize = 0;
-
+	var ontimeout = function() {
+		if (self.requests.length) self.requests.shift().callback(new Error('request has timed out'));
+		self._resetTimeout();
+		self.emit('timeout');
+	};
 	var onmessagelength = function(length) {
 		length = length.readUInt32BE(0);
 		if (length) return self._parse(length, onmessage);
@@ -156,6 +106,18 @@ var Wire = function() {
 		self.emit('unknownmessage', buffer);
 	};
 
+	this._keepAlive = null;
+	this._finished = false;
+
+	this._buffer = [];
+	this._bufferSize = 0;
+	this._parser = null;
+	this._parserSize = 0;
+
+	this._ms = 0;
+	this._timeout = null;
+	this._ontimeout = ontimeout;
+
 	this._parse(1, function(pstrlen) {
 		pstrlen = pstrlen.readUInt8(0);
 		self._parse(pstrlen + 48, function(handshake) {
@@ -182,7 +144,7 @@ Wire.prototype.handshake = function(infoHash, peerId, extensions) {
 Wire.prototype.choke = function() {
 	if (this.amChoking) return;
 	this.amChoking = true;
-	while (this._peerRequests.size()) this._peerRequests.shift()(new Error('wire is choked'));
+	while (this.peerRequests.length) this.peerRequests.shift().callback(new Error('wire is choked'));
 	this._push(MESSAGE_CHOKE);
 };
 
@@ -220,40 +182,33 @@ Wire.prototype.setKeepAlive = function(bool) {
 };
 
 Wire.prototype.setTimeout = function(ms, fn) {
-	this._requests.setTimeout(ms);
+	this._ms = ms;
+	this._resetTimeout();
 	if (fn) this.on('timeout', fn);
 };
-
-Wire.prototype.__defineGetter__('peerRequests', function() {
-	return this._peerRequests.size();
-});
-
-Wire.prototype.__defineGetter__('requests', function() {
-	return this._requests.size();
-});
 
 Wire.prototype.request = function(i, offset, length, callback) {
 	if (!callback) callback = noop;
 	if (this._finished) return callback(new Error('wire is closed'));
 	if (this.peerChoking) return callback(new Error('peer is choking'));
-	this._requests.push(i, offset, length, callback);
+	this.requests.push(new Request(i, offset, length, callback));
+	if (this.requests.length === 1) this._resetTimeout();
 	this._message(ID_REQUEST, [i, offset, length]);
 };
 
 Wire.prototype.cancel = function(i, offset, length) {
-	if (!arguments.length) return this._requests.forEach(this.cancel.bind(this));
-	(this._requests.pull(i, offset, length) || noop)(new Error('request was cancelled'));
+	this._callback(i, offset, length)(new Error('request was cancelled'));
 	this._message(ID_CANCEL, [i, offset, length]);
 };
 
-Wire.prototype.piece = function(i, offset, block) {
-	this.uploaded += block.length;
-	this.emit('upload', block.length);
-	this._message(ID_PIECE, [i, offset], block);
+Wire.prototype.piece = function(i, offset, buffer) {
+	this.uploaded += buffer.length;
+	this.emit('upload', buffer.length);
+	this._message(ID_PIECE, [i, offset], buffer);
 };
 
 Wire.prototype.port = function(port) {
-	var message = new Buffer('\x00\x00\x00\x03\x09\x00\x00');
+	var message = new Buffer([0,0,0,3,9,0,0]);
 	message.writeUInt16BE(port, 5);
 	this._push(message);
 };
@@ -283,7 +238,8 @@ Wire.prototype._onuninterested = function() {
 Wire.prototype._onchoke = function() {
 	this.peerChoking = true;
 	this.emit('choke');
-	while (this._requests.size()) this._requests.shift()(new Error('peer is choking'));
+	while (this.requests.length) this.requests.shift().callback(new Error('peer is choking'));
+	this._resetTimeout();
 };
 
 Wire.prototype._onunchoke = function() {
@@ -308,26 +264,26 @@ Wire.prototype._onrequest = function(i, offset, length) {
 	if (this.amChoking) return;
 
 	var self = this;
-	var respond = function(err, block) {
-		if (self._peerRequests.pull(i, offset, length) !== respond) return;
-		if (err) return;
-		self.piece(i, offset, block);
+	var request = new Request(i, offset, length, respond);
+	var respond = function(err, buffer) {
+		if (err || request !== pull(self.peerRequests, i, offset, length)) return;
+		self.piece(i, offset, buffer);
 	};
 
-	this._peerRequests.push(i, offset, length, respond);
+	this.peerRequests.push(request);
 	this.emit('request', i, offset, length, respond);
 };
 
 Wire.prototype._oncancel = function(i, offset, length) {
-	this._peerRequests.pull(i, offset, length);
+	pull(this.peerRequests, i, offset, length);
 	this.emit('cancel', i, offset, length);
 };
 
-Wire.prototype._onpiece = function(i, offset, block) {
-	(this._requests.pull(i, offset, block.length) || noop)(null, block);
-	this.downloaded += block.length;
-	this.emit('download', block.length);
-	this.emit('piece', i, offset, block);
+Wire.prototype._onpiece = function(i, offset, buffer) {
+	this._callback(i, offset, buffer.length)(null, buffer);
+	this.downloaded += buffer.length;
+	this.emit('download', buffer.length);
+	this.emit('piece', i, offset, buffer);
 };
 
 Wire.prototype._onport = function(port) {
@@ -335,6 +291,20 @@ Wire.prototype._onport = function(port) {
 };
 
 // helpers and streams
+
+Wire.prototype._callback = function(i, offset, length) {
+	var request = pull(this.requests, i, offset, length);
+	if (!request) return noop;
+	this._resetTimeout();
+	return request.callback;
+};
+
+Wire.prototype._resetTimeout = function() {
+	if (this._timeout) clearTimeout(this._timeout);
+	this._timeout = null;
+	if (!this._ms || !this.requests.length) return;
+	this._timeout = setTimeout(this._ontimeout, this._ms);
+};
 
 Wire.prototype._message = function(id, numbers, data) {
 	var dataLength = data ? data.length : 0;
