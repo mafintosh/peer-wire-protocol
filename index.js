@@ -119,8 +119,8 @@ var Wire = function() {
 	this._parser = null;
 	this._parserSize = 0;
 
-	this._parse(1, function(pstrlen) {
-		pstrlen = pstrlen.readUInt8(0);
+	this._parse(1, function(buffer) {
+		var pstrlen = buffer.readUInt8(0);
 		self._parse(pstrlen + 48, function(handshake) {
 			handshake = handshake.slice(pstrlen);
 			self._onhandshake(handshake.slice(8, 28), handshake.slice(28, 48), {dht: !!(handshake[7] & 1)});
