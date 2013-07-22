@@ -1,7 +1,7 @@
 # Peer Wire Protocol
 
 peer-wire-protocol is a node stream implementation of the [peer wire protocol specification](https://wiki.theory.org/BitTorrentSpecification#Peer_wire_protocol_.28TCP.29).
-The protocol is the main communication layer when transferring files using torrents and is used by [peerflix](https://github.com/mafintosh/peerflix).
+The protocol is the main communication layer when transferring files using BitTorrent and is used by [peerflix](https://github.com/mafintosh/peerflix).
 
 It is available through npm:
 
@@ -127,7 +127,8 @@ wire.on('request', function(pieceIndex, offset, length, callback) {
 	callback(null, piece); // respond back to the peer
 });
 
-wire.requests; // how many requests to we currently have pending
+wire.requests;     // list of requests we currently have pending {piece, offset, length}
+wire.peerRequests; // list of requests the peer currently have pending {piece, offset, length}
 ```
 
 You can set a request timeout if you want to
