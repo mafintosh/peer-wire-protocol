@@ -37,6 +37,7 @@ var Request = function(piece, offset, length, callback) {
 	this.offset = offset;
 	this.length = length;
 	this.callback = callback;
+	this.timeout = null;
 };
 
 var Wire = function() {
@@ -59,20 +60,25 @@ var Wire = function() {
 	this.requests = [];
 	this.peerRequests = [];
 
+	this._keepAlive = null;
+	this._finished = false;
+
 	this.on('finish', function() {
 		self._finished = true;
 		self.push(null); // cannot be half open
 		clearInterval(self._keepAlive);
 		self._parse(Number.MAX_VALUE, noop);
-		while (self.requests.length) self.requests.shift().callback(new Error('wire is closed'));
+		while (self.requests.length) self._callback(self.requests.shift(), new Error('wire is closed'), null);
 		while (self.peerRequests.length) self.peerRequests.shift();
 	});
 
 	var ontimeout = function() {
-		if (self.requests.length) self.requests.shift().callback(new Error('request has timed out'));
-		self._resetTimeout();
+		self._callback(self.requests.shift(), new Error('request has timed out'), null);
 		self.emit('timeout');
 	};
+
+	this._timeout = 0;
+	this._ontimeout = ontimeout;
 
 	var onmessagelength = function(buffer) {
 		var length = buffer.readUInt32BE(0);
@@ -108,17 +114,10 @@ var Wire = function() {
 		self.emit('unknownmessage', buffer);
 	};
 
-	this._keepAlive = null;
-	this._finished = false;
-
 	this._buffer = [];
 	this._bufferSize = 0;
 	this._parser = null;
 	this._parserSize = 0;
-
-	this._ms = 0;
-	this._timeout = null;
-	this._ontimeout = ontimeout;
 
 	this._parse(1, function(pstrlen) {
 		pstrlen = pstrlen.readUInt8(0);
@@ -146,7 +145,7 @@ Wire.prototype.handshake = function(infoHash, peerId, extensions) {
 Wire.prototype.choke = function() {
 	if (this.amChoking) return;
 	this.amChoking = true;
-	while (this.peerRequests.length) this.peerRequests.shift().callback(new Error('wire is choked'));
+	while (this.peerRequests.length) this.peerRequests.shift();
 	this._push(MESSAGE_CHOKE);
 };
 
@@ -184,8 +183,9 @@ Wire.prototype.setKeepAlive = function(bool) {
 };
 
 Wire.prototype.setTimeout = function(ms, fn) {
-	this._ms = ms;
-	this._resetTimeout();
+	if (this.requests.length) clearTimeout(this.requests[0].timeout);
+	this._timeout = ms;
+	this._updateTimeout();
 	if (fn) this.on('timeout', fn);
 };
 
@@ -194,12 +194,12 @@ Wire.prototype.request = function(i, offset, length, callback) {
 	if (this._finished) return callback(new Error('wire is closed'));
 	if (this.peerChoking) return callback(new Error('peer is choking'));
 	this.requests.push(new Request(i, offset, length, callback));
-	if (this.requests.length === 1) this._resetTimeout();
+	this._updateTimeout();
 	this._message(ID_REQUEST, [i, offset, length]);
 };
 
 Wire.prototype.cancel = function(i, offset, length) {
-	this._callback(i, offset, length)(new Error('request was cancelled'));
+	this._callback(pull(this.requests, i, offset, length), new Error('request was cancelled'), null);
 	this._message(ID_CANCEL, [i, offset, length]);
 };
 
@@ -240,8 +240,7 @@ Wire.prototype._onuninterested = function() {
 Wire.prototype._onchoke = function() {
 	this.peerChoking = true;
 	this.emit('choke');
-	while (this.requests.length) this.requests.shift().callback(new Error('peer is choking'));
-	this._resetTimeout();
+	while (this.requests.length) this._callback(this.requests.shift(), new Error('peer is choking'), null);
 };
 
 Wire.prototype._onunchoke = function() {
@@ -282,7 +281,7 @@ Wire.prototype._oncancel = function(i, offset, length) {
 };
 
 Wire.prototype._onpiece = function(i, offset, buffer) {
-	this._callback(i, offset, buffer.length)(null, buffer);
+	this._callback(pull(this.requests, i, offset, buffer.length), null, buffer);
 	this.downloaded += buffer.length;
 	this.emit('download', buffer.length);
 	this.emit('piece', i, offset, buffer);
@@ -294,18 +293,16 @@ Wire.prototype._onport = function(port) {
 
 // helpers and streams
 
-Wire.prototype._callback = function(i, offset, length) {
-	var request = pull(this.requests, i, offset, length);
-	if (!request) return noop;
-	this._resetTimeout();
-	return request.callback;
+Wire.prototype._callback = function(request, err, buffer) {
+	if (!request) return;
+	if (request.timeout) clearTimeout(request.timeout);
+	if (!this.peerChoking && !this._finished) this._updateTimeout();
+	request.callback(err, buffer);
 };
 
-Wire.prototype._resetTimeout = function() {
-	if (this._timeout) clearTimeout(this._timeout);
-	this._timeout = null;
-	if (!this._ms || !this.requests.length) return;
-	this._timeout = setTimeout(this._ontimeout, this._ms);
+Wire.prototype._updateTimeout = function() {
+	if (!this._timeout || !this.requests.length || this.requests[0].timeout) return;
+	this.requests[0].timeout = setTimeout(this._ontimeout, this._timeout);
 };
 
 Wire.prototype._message = function(id, numbers, data) {
