@@ -73,12 +73,14 @@ var Wire = function() {
 		self._resetTimeout();
 		self.emit('timeout');
 	};
-	var onmessagelength = function(length) {
-		length = length.readUInt32BE(0);
+
+	var onmessagelength = function(buffer) {
+		var length = buffer.readUInt32BE(0);
 		if (length) return self._parse(length, onmessage);
 		self._parse(4, onmessagelength);
 		self.emit('keep-alive');
 	};
+
 	var onmessage = function(buffer) {
 		self._parse(4, onmessagelength);
 		switch (buffer[0]) {
