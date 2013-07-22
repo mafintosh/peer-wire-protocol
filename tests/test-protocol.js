@@ -1,5 +1,5 @@
 var assert = require('assert');
-var wireProtocol = require('./index');
+var wireProtocol = require('../index');
 var wire = wireProtocol();
 
 wire.pipe(wire);
@@ -24,7 +24,9 @@ wire.on('interested', function() {
 	ran++;
 });
 
+assert.equal(wire.peerRequests.length, 0);
 wire.on('request', function(i, offset, length, callback) {
+	assert.equal(wire.requests.length, 1);
 	assert.equal(i, 0);
 	assert.equal(offset, 1);
 	assert.equal(length, 11);
@@ -46,12 +48,15 @@ assert.ok(!wire.amChoking);
 assert.ok(wire.amInterested);
 
 wire.once('unchoke', function() {
+	assert.equal(wire.requests.length, 0);
 	wire.request(0, 1, 11, function(err, buffer) {
+		assert.equal(wire.requests.length, 0);
 		assert.ok(!err);
 		assert.equal(buffer.toString(), 'hello world');
 		clearTimeout(timeout);
 		assert.equal(ran, 4);
 	});
+	assert.equal(wire.requests.length, 1);
 });
 
 var timeout = setTimeout(function() {
