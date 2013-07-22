@@ -68,8 +68,8 @@ var Wire = function() {
 		self.push(null); // cannot be half open
 		clearInterval(self._keepAlive);
 		self._parse(Number.MAX_VALUE, noop);
+		while (self.peerRequests.length) self.peerRequests.pop();
 		while (self.requests.length) self._callback(self.requests.shift(), new Error('wire is closed'), null);
-		while (self.peerRequests.length) self.peerRequests.shift();
 	});
 
 	var ontimeout = function() {
@@ -145,7 +145,7 @@ Wire.prototype.handshake = function(infoHash, peerId, extensions) {
 Wire.prototype.choke = function() {
 	if (this.amChoking) return;
 	this.amChoking = true;
-	while (this.peerRequests.length) this.peerRequests.shift();
+	while (self.peerRequests.length) self.peerRequests.pop();
 	this._push(MESSAGE_CHOKE);
 };
 
