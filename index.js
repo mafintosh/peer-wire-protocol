@@ -17,7 +17,8 @@ var pull = function(requests, piece, offset, length) {
 	for (var i = 0; i < requests.length; i++) {
 		var req = requests[i];
 		if (req.piece !== piece || req.offset !== offset || req.length !== length) continue;
-		requests.splice(i, 1);
+		if (i === 0) requests.shift();
+		else requests.splice(i, 1);
 		return req;
 	}
 	return null;
