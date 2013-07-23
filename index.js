@@ -9,17 +9,6 @@ var MESSAGE_UNCHOKE      = new Buffer('\x00\x00\x00\x01\x01');
 var MESSAGE_INTERESTED   = new Buffer('\x00\x00\x00\x01\x02');
 var MESSAGE_UNINTERESTED = new Buffer('\x00\x00\x00\x01\x03');
 
-var ID_CHOKE        = 0;
-var ID_UNCHOKE      = 1;
-var ID_INTERESTED   = 2;
-var ID_UNINTERESTED = 3;
-var ID_HAVE         = 4;
-var ID_BITFIELD     = 5;
-var ID_REQUEST      = 6;
-var ID_PIECE        = 7;
-var ID_CANCEL       = 8;
-var ID_PORT         = 9;
-
 var noop = function() {};
 
 var pull = function(requests, piece, offset, length) {
@@ -90,25 +79,25 @@ var Wire = function() {
 	var onmessage = function(buffer) {
 		self._parse(4, onmessagelength);
 		switch (buffer[0]) {
-			case ID_CHOKE:
+			case 0:
 			return self._onchoke();
-			case ID_UNCHOKE:
+			case 1:
 			return self._onunchoke();
-			case ID_INTERESTED:
+			case 2:
 			return self._oninterested();
-			case ID_UNINTERESTED:
+			case 3:
 			return self._onuninterested();
-			case ID_HAVE:
+			case 4:
 			return self._onhave(buffer.readUInt32BE(1));
-			case ID_BITFIELD:
+			case 5:
 			return self._onbitfield(buffer.slice(1));
-			case ID_REQUEST:
+			case 6:
 			return self._onrequest(buffer.readUInt32BE(1), buffer.readUInt32BE(5), buffer.readUInt32BE(9));
-			case ID_PIECE:
+			case 7:
 			return self._onpiece(buffer.readUInt32BE(1), buffer.readUInt32BE(5), buffer.slice(9));
-			case ID_CANCEL:
+			case 8:
 			return self._oncancel(buffer.readUInt32BE(1), buffer.readUInt32BE(5), buffer.readUInt32BE(9));
-			case ID_PORT:
+			case 9:
 			return self._onport(buffer.readUInt16BE(1));
 		}
 		self.emit('unknownmessage', buffer);
@@ -167,26 +156,13 @@ Wire.prototype.uninterested = function() {
 	this._push(MESSAGE_UNINTERESTED);
 };
 
+Wire.prototype.have = function(i) {
+	this._message(4, [i], null);
+};
+
 Wire.prototype.bitfield = function(bitfield) {
 	if (bitfield.buffer) bitfield = bitfield.buffer; // support bitfield objects
-	this._message(ID_BITFIELD, [], bitfield);
-};
-
-Wire.prototype.have = function(i) {
-	this._message(ID_HAVE, [i]);
-};
-
-Wire.prototype.setKeepAlive = function(bool) {
-	clearInterval(this._keepAlive);
-	if (bool === false) return;
-	this._keepAlive = setInterval(this.push.bind(this, MESSAGE_KEEP_ALIVE), 60000);
-};
-
-Wire.prototype.setTimeout = function(ms, fn) {
-	if (this.requests.length) clearTimeout(this.requests[0].timeout);
-	this._timeout = ms;
-	this._updateTimeout();
-	if (fn) this.on('timeout', fn);
+	this._message(5, [], bitfield);
 };
 
 Wire.prototype.request = function(i, offset, length, callback) {
@@ -195,24 +171,37 @@ Wire.prototype.request = function(i, offset, length, callback) {
 	if (this.peerChoking) return callback(new Error('peer is choking'));
 	this.requests.push(new Request(i, offset, length, callback));
 	this._updateTimeout();
-	this._message(ID_REQUEST, [i, offset, length]);
-};
-
-Wire.prototype.cancel = function(i, offset, length) {
-	this._callback(pull(this.requests, i, offset, length), new Error('request was cancelled'), null);
-	this._message(ID_CANCEL, [i, offset, length]);
+	this._message(6, [i, offset, length], null);
 };
 
 Wire.prototype.piece = function(i, offset, buffer) {
 	this.uploaded += buffer.length;
 	this.emit('upload', buffer.length);
-	this._message(ID_PIECE, [i, offset], buffer);
+	this._message(7, [i, offset], buffer);
+};
+
+Wire.prototype.cancel = function(i, offset, length) {
+	this._callback(pull(this.requests, i, offset, length), new Error('request was cancelled'), null);
+	this._message(8, [i, offset, length], null);
 };
 
 Wire.prototype.port = function(port) {
 	var message = new Buffer([0,0,0,3,9,0,0]);
 	message.writeUInt16BE(port, 5);
 	this._push(message);
+};
+
+Wire.prototype.setKeepAlive = function(bool) {
+	clearInterval(this._keepAlive);
+	if (bool === false) return;
+	this._keepAlive = setInterval(this._push.bind(this, MESSAGE_KEEP_ALIVE), 60000);
+};
+
+Wire.prototype.setTimeout = function(ms, fn) {
+	if (this.requests.length) clearTimeout(this.requests[0].timeout);
+	this._timeout = ms;
+	this._updateTimeout();
+	if (fn) this.on('timeout', fn);
 };
 
 Wire.prototype.destroy = function() {
@@ -265,12 +254,12 @@ Wire.prototype._onrequest = function(i, offset, length) {
 	if (this.amChoking) return;
 
 	var self = this;
-	var request = new Request(i, offset, length, respond);
 	var respond = function(err, buffer) {
 		if (err || request !== pull(self.peerRequests, i, offset, length)) return;
 		self.piece(i, offset, buffer);
 	};
 
+	var request = new Request(i, offset, length, respond);
 	this.peerRequests.push(request);
 	this.emit('request', i, offset, length, respond);
 };
@@ -311,9 +300,9 @@ Wire.prototype._message = function(id, numbers, data) {
 
 	buffer.writeUInt32BE(buffer.length + dataLength - 4, 0);
 	buffer[4] = id;
-	numbers.forEach(function(num, i) {
-		buffer.writeUInt32BE(num, 5 + 4 * i);
-	});
+	for (var i = 0; i < numbers.length; i++) {
+		buffer.writeUInt32BE(numbers[i], 5 + 4 * i);
+	}
 
 	this._push(buffer);
 	if (data) this._push(data);
