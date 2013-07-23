@@ -8,6 +8,8 @@ var MESSAGE_CHOKE        = new Buffer('\x00\x00\x00\x01\x00');
 var MESSAGE_UNCHOKE      = new Buffer('\x00\x00\x00\x01\x01');
 var MESSAGE_INTERESTED   = new Buffer('\x00\x00\x00\x01\x02');
 var MESSAGE_UNINTERESTED = new Buffer('\x00\x00\x00\x01\x03');
+var MESSAGE_RESERVED     = '\x00\x00\x00\x00\x00\x00\x00\x00';
+var MESSAGE_PORT         = '\x00\x00\x00\x03\x09\x00\x00';
 
 var noop = function() {};
 
@@ -125,7 +127,7 @@ Wire.prototype.handshake = function(infoHash, peerId, extensions) {
 	if (typeof peerId === 'string') peerId = new Buffer(peerId);
 	if (infoHash.length !== 20 || peerId.length !== 20) throw new Error('infoHash and peerId MUST have length 20');
 
-	var reserved = new Buffer([0,0,0,0,0,0,0,0]);
+	var reserved = new Buffer(MESSAGE_RESERVED);
 	if (extensions && extensions.dht) reserved[7] |= 1;
 
 	this._push(Buffer.concat([MESSAGE_PROTOCOL, reserved, infoHash, peerId], MESSAGE_PROTOCOL.length+48));
@@ -167,7 +169,7 @@ Wire.prototype.bitfield = function(bitfield) {
 
 Wire.prototype.request = function(i, offset, length, callback) {
 	if (!callback) callback = noop;
-	if (this._finished) return callback(new Error('wire is closed'));
+	if (this._finished)   return callback(new Error('wire is closed'));
 	if (this.peerChoking) return callback(new Error('peer is choking'));
 	this.requests.push(new Request(i, offset, length, callback));
 	this._updateTimeout();
@@ -186,7 +188,7 @@ Wire.prototype.cancel = function(i, offset, length) {
 };
 
 Wire.prototype.port = function(port) {
-	var message = new Buffer([0,0,0,3,9,0,0]);
+	var message = new Buffer(MESSAGE_PORT);
 	message.writeUInt16BE(port, 5);
 	this._push(message);
 };
