@@ -2,14 +2,14 @@ var Duplex = require('stream').Duplex || require('readable-stream').Duplex;
 var EventEmitter = require('events').EventEmitter;
 var bitfield = require('bitfield');
 
-var MESSAGE_PROTOCOL     = new Buffer('\x13BitTorrent protocol');
-var MESSAGE_KEEP_ALIVE   = new Buffer('\x00\x00\x00\x00');
-var MESSAGE_CHOKE        = new Buffer('\x00\x00\x00\x01\x00');
-var MESSAGE_UNCHOKE      = new Buffer('\x00\x00\x00\x01\x01');
-var MESSAGE_INTERESTED   = new Buffer('\x00\x00\x00\x01\x02');
-var MESSAGE_UNINTERESTED = new Buffer('\x00\x00\x00\x01\x03');
-var MESSAGE_RESERVED     = '\x00\x00\x00\x00\x00\x00\x00\x00';
-var MESSAGE_PORT         = '\x00\x00\x00\x03\x09\x00\x00';
+var MESSAGE_PROTOCOL     = new Buffer([0x13,0x42,0x69,0x74,0x54,0x6f,0x72,0x72,0x65,0x6e,0x74,0x20,0x70,0x72,0x6f,0x74,0x6f,0x63,0x6f,0x6c]);
+var MESSAGE_KEEP_ALIVE   = new Buffer([0x00,0x00,0x00,0x00]);
+var MESSAGE_CHOKE        = new Buffer([0x00,0x00,0x00,0x01,0x00]);
+var MESSAGE_UNCHOKE      = new Buffer([0x00,0x00,0x00,0x01,0x01]);
+var MESSAGE_INTERESTED   = new Buffer([0x00,0x00,0x00,0x01,0x02]);
+var MESSAGE_UNINTERESTED = new Buffer([0x00,0x00,0x00,0x01,0x03]);
+var MESSAGE_RESERVED     = [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00];
+var MESSAGE_PORT         = [0x00,0x00,0x00,0x03,0x09,0x00,0x00];
 
 var noop = function() {};
 
