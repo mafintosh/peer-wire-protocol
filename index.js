@@ -1,6 +1,7 @@
 var Duplex = require('stream').Duplex || require('readable-stream').Duplex;
 var EventEmitter = require('events').EventEmitter;
 var bitfield = require('bitfield');
+var util = require('util');
 
 var MESSAGE_PROTOCOL     = new Buffer([0x13,0x42,0x69,0x74,0x54,0x6f,0x72,0x72,0x65,0x6e,0x74,0x20,0x70,0x72,0x6f,0x74,0x6f,0x63,0x6f,0x6c]);
 var MESSAGE_KEEP_ALIVE   = new Buffer([0x00,0x00,0x00,0x00]);
@@ -121,7 +122,7 @@ var Wire = function() {
 	});
 };
 
-Wire.prototype.__proto__ = Duplex.prototype;
+util.inherits(Wire, Duplex);
 
 Wire.prototype.handshake = function(infoHash, peerId, extensions) {
 	if (typeof infoHash === 'string') infoHash = new Buffer(infoHash, 'hex');
