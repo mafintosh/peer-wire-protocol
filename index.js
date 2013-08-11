@@ -193,6 +193,10 @@ Wire.prototype.cancel = function(i, offset, length) {
 	this._message(8, [i, offset, length], null);
 };
 
+Wire.prototype.extended = function(msg) {
+	this._message(20, [bncode.encode(msg)], null);
+};
+
 Wire.prototype.port = function(port) {
 	var message = new Buffer(MESSAGE_PORT);
 	message.writeUInt16BE(port, 5);
