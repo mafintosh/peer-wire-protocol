@@ -2,6 +2,7 @@ var Duplex = require('stream').Duplex || require('readable-stream').Duplex;
 var EventEmitter = require('events').EventEmitter;
 var bitfield = require('bitfield');
 var util = require('util');
+var bncode = require('bncode');
 
 var MESSAGE_PROTOCOL     = new Buffer([0x13,0x42,0x69,0x74,0x54,0x6f,0x72,0x72,0x65,0x6e,0x74,0x20,0x70,0x72,0x6f,0x74,0x6f,0x63,0x6f,0x6c]);
 var MESSAGE_KEEP_ALIVE   = new Buffer([0x00,0x00,0x00,0x00]);
@@ -103,6 +104,8 @@ var Wire = function() {
 			return self._oncancel(buffer.readUInt32BE(1), buffer.readUInt32BE(5), buffer.readUInt32BE(9));
 			case 9:
 			return self._onport(buffer.readUInt16BE(1));
+			case 20:
+			return self._onextended(bncode.decode(buffer));
 		}
 		self.emit('unknownmessage', buffer);
 	};
@@ -131,6 +134,7 @@ Wire.prototype.handshake = function(infoHash, peerId, extensions) {
 
 	var reserved = new Buffer(MESSAGE_RESERVED);
 	if (extensions && extensions.dht) reserved[7] |= 1;
+	reserved[5] |= 0x10; // enable extended message
 
 	this._push(Buffer.concat([MESSAGE_PROTOCOL, reserved, infoHash, peerId], MESSAGE_PROTOCOL.length+48));
 };
@@ -282,6 +286,10 @@ Wire.prototype._onpiece = function(i, offset, buffer) {
 
 Wire.prototype._onport = function(port) {
 	this.emit('port', port);
+};
+
+Wire.prototype._onextended = function(ext) {
+	this.emit('extended', ext);
 };
 
 // helpers and streams
