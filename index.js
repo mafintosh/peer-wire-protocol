@@ -193,8 +193,10 @@ Wire.prototype.cancel = function(i, offset, length) {
 	this._message(8, [i, offset, length], null);
 };
 
-Wire.prototype.extended = function(msg) {
-	this._message(20, [], bncode.encode(msg));
+Wire.prototype.extended = function(ext_number, msg) {
+    var ext_id = new Buffer(1);
+    ext_id.writeUInt8(ext_number, 0);
+    this._message(20, [], Buffer.concat([ext_id, bncode.encode(msg)]));
 };
 
 Wire.prototype.port = function(port) {
