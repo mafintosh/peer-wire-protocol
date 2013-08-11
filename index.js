@@ -194,7 +194,7 @@ Wire.prototype.cancel = function(i, offset, length) {
 };
 
 Wire.prototype.extended = function(msg) {
-	this._message(20, [bncode.encode(msg)], null);
+	this._message(20, [], bncode.encode(msg));
 };
 
 Wire.prototype.port = function(port) {
