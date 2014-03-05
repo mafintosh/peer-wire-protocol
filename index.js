@@ -3,6 +3,7 @@ var EventEmitter = require('events').EventEmitter;
 var bitfield = require('bitfield');
 var util = require('util');
 var bncode = require('bncode');
+var speedometer = require('speedometer');
 
 var MESSAGE_PROTOCOL     = new Buffer([0x13,0x42,0x69,0x74,0x54,0x6f,0x72,0x72,0x65,0x6e,0x74,0x20,0x70,0x72,0x6f,0x74,0x6f,0x63,0x6f,0x6c]);
 var MESSAGE_KEEP_ALIVE   = new Buffer([0x00,0x00,0x00,0x00]);
@@ -46,10 +47,12 @@ var Wire = function() {
 	this.peerPieces = [];
 	this.peerExtensions = {};
 	this.peerAddress = null; // external
-	this.peerSpeed = null;   // external
 
 	this.uploaded = 0;
 	this.downloaded = 0;
+
+	this.uploadSpeed = speedometer();
+	this.downloadSpeed = speedometer();
 
 	this.requests = [];
 	this.peerRequests = [];
@@ -184,6 +187,7 @@ Wire.prototype.request = function(i, offset, length, callback) {
 
 Wire.prototype.piece = function(i, offset, buffer) {
 	this.uploaded += buffer.length;
+	this.uploadSpeed(buffer.length);
 	this.emit('upload', buffer.length);
 	this._message(7, [i, offset], buffer);
 };
@@ -286,6 +290,7 @@ Wire.prototype._oncancel = function(i, offset, length) {
 Wire.prototype._onpiece = function(i, offset, buffer) {
 	this._callback(pull(this.requests, i, offset, buffer.length), null, buffer);
 	this.downloaded += buffer.length;
+	this.downloadSpeed(buffer.length);
 	this.emit('download', buffer.length);
 	this.emit('piece', i, offset, buffer);
 };
