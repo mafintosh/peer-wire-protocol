@@ -108,7 +108,7 @@ var Wire = function() {
 			case 9:
 			return self._onport(buffer.readUInt16BE(1));
 			case 20:
-			return self._onextended(bncode.decode(buffer.readUInt8(1), buffer.slice(2)));
+			return self._onextended(buffer.readUInt8(1), bncode.decode(buffer.slice(2)));
 		}
 		self.emit('unknownmessage', buffer);
 	};
