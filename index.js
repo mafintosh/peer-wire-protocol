@@ -108,7 +108,7 @@ var Wire = function() {
 			case 9:
 			return self._onport(buffer.readUInt16BE(1));
 			case 20:
-			return self._onextended(buffer.readUInt8(1), bncode.decode(buffer.slice(2)));
+			return self._onextended(buffer.readUInt8(1), buffer.slice(2));
 		}
 		self.emit('unknownmessage', buffer);
 	};
@@ -198,9 +198,7 @@ Wire.prototype.cancel = function(i, offset, length) {
 };
 
 Wire.prototype.extended = function(id, msg) {
-    var container = new Buffer(1);
-    container.writeUInt8(id, 0);
-    this._message(20, [], Buffer.concat([container, bncode.encode(msg)]));
+	this._message(20, [], Buffer.concat([new Buffer([id]), Buffer.isBuffer(msg) ? msg : bncode.encode(msg)]));
 };
 
 Wire.prototype.port = function(port) {
