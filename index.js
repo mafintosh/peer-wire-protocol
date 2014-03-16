@@ -108,7 +108,7 @@ var Wire = function() {
 			case 9:
 			return self._onport(buffer.readUInt16BE(1));
 			case 20:
-			return self._onextended(bncode.decode(buffer));
+			return self._onextended(bncode.decode(buffer.readUInt8(1), buffer.slice(2)));
 		}
 		self.emit('unknownmessage', buffer);
 	};
@@ -197,10 +197,10 @@ Wire.prototype.cancel = function(i, offset, length) {
 	this._message(8, [i, offset, length], null);
 };
 
-Wire.prototype.extended = function(ext_number, msg) {
-    var ext_id = new Buffer(1);
-    ext_id.writeUInt8(ext_number, 0);
-    this._message(20, [], Buffer.concat([ext_id, bncode.encode(msg)]));
+Wire.prototype.extended = function(id, msg) {
+    var container = new Buffer(1);
+    container.writeUInt8(id, 0);
+    this._message(20, [], Buffer.concat([container, bncode.encode(msg)]));
 };
 
 Wire.prototype.port = function(port) {
@@ -299,8 +299,8 @@ Wire.prototype._onport = function(port) {
 	this.emit('port', port);
 };
 
-Wire.prototype._onextended = function(ext) {
-	this.emit('extended', ext);
+Wire.prototype._onextended = function(id, ext) {
+	this.emit('extended', id, ext);
 };
 
 // helpers and streams
