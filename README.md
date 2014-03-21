@@ -7,6 +7,8 @@ It is available through npm:
 
 	npm install peer-wire-protocol
 
+[![build status](https://secure.travis-ci.org/mafintosh/peer-wire-protocol.png)](http://travis-ci.org/mafintosh/peer-wire-protocol)
+
 ## Usage is simple
 
 Since the protocol is implemented as a stream all you have to do is pipe some to and from it
