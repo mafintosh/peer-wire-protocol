@@ -274,7 +274,8 @@ Wire.prototype._onrequest = function(i, offset, length) {
 
 	var self = this;
 	var respond = function(err, buffer) {
-		if (err || request !== pull(self.peerRequests, i, offset, length)) return;
+		if (request !== pull(self.peerRequests, i, offset, length)) return;
+		if (err) return;
 		self.piece(i, offset, buffer);
 	};
 
