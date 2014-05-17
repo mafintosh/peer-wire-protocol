@@ -1,6 +1,6 @@
 {
   "name": "peer-wire-protocol",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Stream implementing the peer wire protocol used in bittorrent",
   "author": "Mathias Buus Madsen <mathiasbuus@gmail.com>",
   "repository": "git://github.com/mafintosh/peer-wire-protocol.git",
