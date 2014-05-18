@@ -35,8 +35,9 @@ var Request = function(piece, offset, length, callback) {
 	this.timeout = null;
 };
 
-var Wire = function() {
-	if (!(this instanceof Wire)) return new Wire();
+var Wire = function(opts) {
+	if (!(this instanceof Wire)) return new Wire(opts);
+	if (!opts) opts = {};
 	Duplex.call(this);
 	var self = this;
 
@@ -51,8 +52,8 @@ var Wire = function() {
 	this.uploaded = 0;
 	this.downloaded = 0;
 
-	this.uploadSpeed = speedometer();
-	this.downloadSpeed = speedometer();
+	this.uploadSpeed = speedometer(opts.speed);
+	this.downloadSpeed = speedometer(opts.speed);
 
 	this.requests = [];
 	this.peerRequests = [];
