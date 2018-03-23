@@ -17,8 +17,10 @@
   },
   "dependencies": {
     "bitfield": "^0.1.0",
-    "readable-stream": "^1.0.2",
     "bncode": "^0.2.3",
+    "buffer-alloc": "^1.1.0",
+    "buffer-from": "^1.0.0",
+    "readable-stream": "^1.0.2",
     "speedometer": "^0.1.2"
   }
 }

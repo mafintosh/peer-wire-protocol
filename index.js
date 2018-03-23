@@ -4,13 +4,15 @@ var bitfield = require('bitfield');
 var util = require('util');
 var bncode = require('bncode');
 var speedometer = require('speedometer');
+var bufferFrom = require('buffer-from');
+var bufferAlloc = require('buffer-alloc');
 
-var MESSAGE_PROTOCOL     = new Buffer([0x13,0x42,0x69,0x74,0x54,0x6f,0x72,0x72,0x65,0x6e,0x74,0x20,0x70,0x72,0x6f,0x74,0x6f,0x63,0x6f,0x6c]);
-var MESSAGE_KEEP_ALIVE   = new Buffer([0x00,0x00,0x00,0x00]);
-var MESSAGE_CHOKE        = new Buffer([0x00,0x00,0x00,0x01,0x00]);
-var MESSAGE_UNCHOKE      = new Buffer([0x00,0x00,0x00,0x01,0x01]);
-var MESSAGE_INTERESTED   = new Buffer([0x00,0x00,0x00,0x01,0x02]);
-var MESSAGE_UNINTERESTED = new Buffer([0x00,0x00,0x00,0x01,0x03]);
+var MESSAGE_PROTOCOL     = bufferFrom([0x13,0x42,0x69,0x74,0x54,0x6f,0x72,0x72,0x65,0x6e,0x74,0x20,0x70,0x72,0x6f,0x74,0x6f,0x63,0x6f,0x6c]);
+var MESSAGE_KEEP_ALIVE   = bufferFrom([0x00,0x00,0x00,0x00]);
+var MESSAGE_CHOKE        = bufferFrom([0x00,0x00,0x00,0x01,0x00]);
+var MESSAGE_UNCHOKE      = bufferFrom([0x00,0x00,0x00,0x01,0x01]);
+var MESSAGE_INTERESTED   = bufferFrom([0x00,0x00,0x00,0x01,0x02]);
+var MESSAGE_UNINTERESTED = bufferFrom([0x00,0x00,0x00,0x01,0x03]);
 var MESSAGE_RESERVED     = [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00];
 var MESSAGE_PORT         = [0x00,0x00,0x00,0x03,0x09,0x00,0x00];
 
@@ -135,11 +137,11 @@ var Wire = function(opts) {
 util.inherits(Wire, Duplex);
 
 Wire.prototype.handshake = function(infoHash, peerId, extensions) {
-	if (typeof infoHash === 'string') infoHash = new Buffer(infoHash, 'hex');
-	if (typeof peerId === 'string') peerId = new Buffer(peerId);
+	if (typeof infoHash === 'string') infoHash = bufferFrom(infoHash, 'hex');
+	if (typeof peerId === 'string') peerId = bufferFrom(peerId);
 	if (infoHash.length !== 20 || peerId.length !== 20) throw new Error('infoHash and peerId MUST have length 20');
 
-	var reserved = new Buffer(MESSAGE_RESERVED);
+	var reserved = bufferFrom(MESSAGE_RESERVED);
 	if (extensions && extensions.dht) reserved[7] |= 1;
 	reserved[5] |= 0x10; // enable extended message
 
@@ -202,11 +204,11 @@ Wire.prototype.cancel = function(i, offset, length) {
 };
 
 Wire.prototype.extended = function(id, msg) {
-	this._message(20, [], Buffer.concat([new Buffer([id]), Buffer.isBuffer(msg) ? msg : bncode.encode(msg)]));
+	this._message(20, [], Buffer.concat([bufferFrom([id]), Buffer.isBuffer(msg) ? msg : bncode.encode(msg)]));
 };
 
 Wire.prototype.port = function(port) {
-	var message = new Buffer(MESSAGE_PORT);
+	var message = bufferFrom(MESSAGE_PORT);
 	message.writeUInt16BE(port, 5);
 	this._push(message);
 };
@@ -322,7 +324,7 @@ Wire.prototype._updateTimeout = function() {
 
 Wire.prototype._message = function(id, numbers, data) {
 	var dataLength = data ? data.length : 0;
-	var buffer = new Buffer(5 + 4 * numbers.length);
+	var buffer = bufferAlloc(5 + 4 * numbers.length);
 
 	buffer.writeUInt32BE(buffer.length + dataLength - 4, 0);
 	buffer[4] = id;

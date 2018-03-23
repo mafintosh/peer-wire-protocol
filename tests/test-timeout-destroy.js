@@ -1,13 +1,14 @@
 var assert = require('assert');
 var wireProtocol = require('../index');
 var wire = wireProtocol();
+var bufferFrom = require('buffer-from')
 
 var timeouts = 0;
 
 wire.pipe(wire);
 wire.setTimeout(1000);
 
-wire.handshake(new Buffer('01234567890123456789'), new Buffer('12345678901234567890'));
+wire.handshake(bufferFrom('01234567890123456789'), bufferFrom('12345678901234567890'));
 wire.unchoke();
 
 wire.on('unchoke', function() {

@@ -25,7 +25,7 @@ net.createServer(function(socket) {
 
 	wire.on('handshake', function(infoHash, peerId) {
 		// lets emit a handshake of our own as well
-		wire.handshake(new Buffer('my info hash'), new Buffer('my peer id'));
+		wire.handshake(Buffer.from('my info hash'), Buffer.from('my peer id'));
 	});
 
 	wire.on('unchoke', function() {

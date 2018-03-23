@@ -1,6 +1,7 @@
 var assert = require('assert');
 var wireProtocol = require('../index');
 var wire = wireProtocol();
+var bufferFrom = require('buffer-from');
 
 wire.pipe(wire);
 
@@ -31,10 +32,10 @@ wire.on('request', function(i, offset, length, callback) {
 	assert.equal(offset, 1);
 	assert.equal(length, 11);
 	ran++;
-	callback(null, new Buffer('hello world'));
+	callback(null, bufferFrom('hello world'));
 });
 
-wire.handshake(new Buffer('01234567890123456789'), new Buffer('12345678901234567890'));
+wire.handshake(bufferFrom('01234567890123456789'), bufferFrom('12345678901234567890'));
 
 assert.ok(wire.amChoking);
 assert.ok(wire.peerChoking);
